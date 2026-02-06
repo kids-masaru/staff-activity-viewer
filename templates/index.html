@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <div style="text-align:center; margin-bottom:20px;">
+        <h2 style="color:var(--primary); margin:0;"><i class="fas fa-chart-line"></i> 営業活動ビューアー</h2>
+        <p style="color:var(--text-sub); font-size:0.9rem; margin-top:5px;">部下の活動を期間指定で確認</p>
+    </div>
+
+    <form method="POST" action="/report" onsubmit="showLoading()">
+        <!-- Staff Select -->
+        <div class="input-group">
+            <label><i class="fas fa-user-tie"></i> 対象社員</label>
+            <div style="position:relative;">
+                <select name="staff_name" id="staffSelect" required>
+                    <option value="">-- 社員を選択 --</option>
+                    {% for staff in staff_options %}
+                    <option value="{{ staff }}">{{ staff }}</option>
+                    {% endfor %}
+                </select>
+                <i class="fas fa-chevron-down"
+                    style="position:absolute; right:12px; top:14px; color:var(--text-sub); pointer-events:none; font-size:0.8rem;"></i>
+            </div>
+        </div>
+
+        <!-- Period Selection -->
+        <div class="input-group">
+            <label><i class="fas fa-calendar-alt"></i> 期間</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                <label class="period-btn">
+                    <input type="radio" name="period" value="1week" checked onchange="toggleCustomDate()">
+                    <span>1週間</span>
+                </label>
+                <label class="period-btn">
+                    <input type="radio" name="period" value="2weeks" onchange="toggleCustomDate()">
+                    <span>2週間</span>
+                </label>
+                <label class="period-btn">
+                    <input type="radio" name="period" value="1month" onchange="toggleCustomDate()">
+                    <span>1ヶ月</span>
+                </label>
+                <label class="period-btn">
+                    <input type="radio" name="period" value="custom" onchange="toggleCustomDate()">
+                    <span>カスタム</span>
+                </label>
+            </div>
+
+            <!-- Custom Date Range (hidden by default) -->
+            <div id="customDateRange" style="display:none; margin-top:10px;">
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <input type="date" name="custom_start" id="customStart" style="flex:1;">
+                    <span style="color:var(--text-sub);">〜</span>
+                    <input type="date" name="custom_end" id="customEnd" style="flex:1;">
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn-primary">
+            <i class="fas fa-search"></i> 活動レポートを表示
+        </button>
+    </form>
+</div>
+
+<style>
+    .period-btn {
+        flex: 1;
+        min-width: 70px;
+    }
+
+    .period-btn input {
+        display: none;
+    }
+
+    .period-btn span {
+        display: block;
+        text-align: center;
+        padding: 10px 8px;
+        border-radius: 8px;
+        background: #f1f5f9;
+        color: var(--text-sub);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 2px solid transparent;
+    }
+
+    .period-btn input:checked+span {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .period-btn:hover span {
+        border-color: var(--primary);
+    }
+</style>
+
+<script>
+    function toggleCustomDate() {
+        const isCustom = document.querySelector('input[name="period"][value="custom"]').checked;
+        document.getElementById('customDateRange').style.display = isCustom ? 'block' : 'none';
+
+        if (isCustom) {
+            // Set default dates
+            const today = new Date();
+            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+            document.getElementById('customEnd').value = today.toISOString().split('T')[0];
+            document.getElementById('customStart').value = weekAgo.toISOString().split('T')[0];
+        }
+    }
+</script>
+{% endblock %}
