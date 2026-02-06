@@ -577,20 +577,29 @@ def fetch_staff_activities(staff_email: str, start_date: str, end_date: str) -> 
         print(f"Staff Activities Fetch Exception: {e}")
         return []
 
-def filter_mass_emails(activities: list, threshold: int = 10, similarity_ratio: float = 0.90) -> tuple:
+def filter_mass_emails(activities: list, daily_threshold: int = 20, similarity_threshold: int = 10, similarity_ratio: float = 0.90) -> tuple:
     """
     Detect and separate mass emails from individual activities using text similarity.
     Returns: (individual_activities, mass_email_count)
     
-    Mass email detection: Activities with 90%+ similar content are grouped together.
-    If a group has 10+ items, they are considered mass emails.
+    Strategy:
+    1. Group activities by date
+    2. Only check dates with 20+ activities (daily_threshold)
+    3. Within those dates, find groups of 10+ similar activities (similarity_threshold)
+    4. Those are mass emails
     """
     from difflib import SequenceMatcher
+    from collections import defaultdict
     
     if not activities:
         return [], 0
     
-    # Calculate similarity between two texts
+    # Calculate similarity between two activities (content + next_action)
+    def get_comparison_text(activity: dict) -> str:
+        content = activity.get("content", "") or ""
+        next_action = activity.get("next_action", "") or ""
+        return (content + " " + next_action).strip()
+    
     def get_similarity(text1: str, text2: str) -> float:
         if not text1 or not text2:
             return 0.0
@@ -601,42 +610,49 @@ def filter_mass_emails(activities: list, threshold: int = 10, similarity_ratio: 
             return 0.0
         return SequenceMatcher(None, t1, t2).ratio()
     
-    # Group similar activities
-    groups = []  # List of lists of indices
-    assigned = set()
+    # Step 1: Group activities by date
+    date_groups = defaultdict(list)
+    for i, activity in enumerate(activities):
+        date = activity.get("date", "")
+        date_groups[date].append(i)
     
-    for i, activity_i in enumerate(activities):
-        if i in assigned:
-            continue
-            
-        content_i = activity_i.get("content", "")
-        if not content_i or len(content_i.strip()) < 20:
-            # Too short to be mass email, skip
-            continue
-            
-        group = [i]
-        assigned.add(i)
-        
-        for j, activity_j in enumerate(activities):
-            if j in assigned or j <= i:
-                continue
-                
-            content_j = activity_j.get("content", "")
-            if not content_j:
-                continue
-                
-            # Check similarity
-            if get_similarity(content_i, content_j) >= similarity_ratio:
-                group.append(j)
-                assigned.add(j)
-        
-        if len(group) >= threshold:
-            groups.append(group)
-    
-    # Collect all mass email indices
+    # Step 2: Only process dates with 20+ activities
     mass_email_indices = set()
-    for group in groups:
-        mass_email_indices.update(group)
+    
+    for date, indices in date_groups.items():
+        if len(indices) < daily_threshold:
+            # Skip days with fewer than 20 activities
+            continue
+        
+        # Step 3: Find similar groups within this date
+        assigned = set()
+        
+        for i in indices:
+            if i in assigned:
+                continue
+            
+            text_i = get_comparison_text(activities[i])
+            if not text_i:
+                continue
+            
+            group = [i]
+            assigned.add(i)
+            
+            for j in indices:
+                if j in assigned or j <= i:
+                    continue
+                
+                text_j = get_comparison_text(activities[j])
+                if not text_j:
+                    continue
+                
+                if get_similarity(text_i, text_j) >= similarity_ratio:
+                    group.append(j)
+                    assigned.add(j)
+            
+            # Step 4: If group has 10+ similar items, mark as mass email
+            if len(group) >= similarity_threshold:
+                mass_email_indices.update(group)
     
     # Separate activities
     individual_activities = []
