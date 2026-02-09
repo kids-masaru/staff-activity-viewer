@@ -1,6 +1,6 @@
 {
-    "name": "活動記録",
-    "short_name": "活動記録",
+    "name": "ミエマス",
+    "short_name": "ミエマス",
     "start_url": "./",
     "scope": "./",
     "display": "standalone",
